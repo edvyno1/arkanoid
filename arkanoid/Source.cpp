@@ -3,8 +3,8 @@
 #include <SFML/Graphics.hpp>
 
 constexpr int windowWidth = 800 , windowHeight = 600;
-constexpr float ballRadius = 20.f , ballSpeed =  2.f ;
-constexpr float bouncerHeight = 20, bouncerWidth = 60, bouncerSpeed = 8;
+constexpr float ballRadius = 15 , ballSpeed =  6 ;
+constexpr float bouncerHeight = 20, bouncerWidth = 80, bouncerSpeed = 8;
 constexpr float brickHeight = 20, brickWidth = 60;
 constexpr int brickX = 11, brickY = 4;
 
@@ -89,7 +89,7 @@ struct Bouncer : public Rectangle
 
 struct Brick : public Rectangle
 {
-    bool exists = true;
+    bool doesNotExist = false;
     Brick(float posX, float posY)
     {
         shape.setPosition(posX, posY);
@@ -99,6 +99,45 @@ struct Brick : public Rectangle
     }
 };
 
+template <class T1, class T2>
+bool isIntersecting(T1& mA, T2& mB)
+{
+    return mA.right() >= mB.left() && mA.left() <= mB.right() &&
+        mA.bottom() >= mB.top() && mA.top() <= mB.bottom();
+}
+
+void testCollision(Bouncer& bouncer, Ball& ball)
+{
+    if (!isIntersecting(bouncer,ball)) return;
+
+    ball.speed.y = -ballSpeed;
+    if (ball.x() < bouncer.x())
+        ball.speed.x = -ballSpeed;
+    else
+        ball.speed.x = ballSpeed;
+}
+
+void testCollision(Brick& brick, Ball& ball)
+{
+    if (!isIntersecting(brick, ball)) return;
+    brick.doesNotExist = true;
+
+    float overlapLeft{ ball.right() - brick.left() };
+    float overlapRight{ brick.right() - ball.left() };
+    float overlapTop{ ball.bottom() - brick.top() };
+    float overlapBottom{ brick.bottom() - ball.top() };
+
+    bool ballFromLeft(abs(overlapLeft) < abs(overlapRight));
+    bool ballFromTop(abs(overlapTop) < abs(overlapBottom));
+
+    float minOverlapX{ ballFromLeft ? overlapLeft : overlapRight };
+    float minOverlapY{ ballFromTop ? overlapTop : overlapBottom };
+
+    if (abs(minOverlapX) < abs(minOverlapY))
+        ball.speed.x = ballFromLeft ? -ballSpeed : ballSpeed;
+    else
+        ball.speed.y = ballFromTop ? -ballSpeed : ballSpeed;
+}
 
 
 int main()
@@ -123,10 +162,20 @@ int main()
         window.clear(sf::Color::Black);
         ball.update();
         bouncer.update();
+        testCollision(bouncer, ball);
+        for (auto& brick : bricks) testCollision(brick, ball);
+        bricks.erase(remove_if(begin(bricks), end(bricks),
+            [](const Brick& mBrick)
+            {
+                return mBrick.doesNotExist;
+            }),
+            end(bricks));
         window.draw(ball.shape);
         window.draw(bouncer.shape);
         for (auto& brick : bricks) window.draw(brick.shape);
         window.display();
+
+
         while (window.pollEvent(event))
         {
             switch (event.type)
