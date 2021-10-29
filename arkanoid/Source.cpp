@@ -1,5 +1,3 @@
-
-//#include <cmath>
 #include <SFML/Graphics.hpp>
 
 constexpr int windowWidth = 800 , windowHeight = 600;
@@ -12,7 +10,7 @@ struct Ball
 {
     sf::CircleShape shape;
     sf::Vector2f speed{ -ballSpeed, -ballSpeed };
-
+    bool gameOver = 0;
 
     Ball(float posX, float posY) 
     {
@@ -34,7 +32,7 @@ struct Ball
         if (top() < 0)
             speed.y = ballSpeed;
         else if (bottom() > windowHeight)
-            speed.y = -ballSpeed;
+            gameOver = 1;
 
     }
     float x() { return shape.getPosition().x; }
@@ -146,19 +144,61 @@ int main()
     window.setFramerateLimit(60);
     sf::Event event;
 
-    Ball ball(400,400);
+    Ball ball(400, 400);
     Bouncer bouncer(400, 500);
     std::vector<Brick> bricks;
     for (int iX = 0; iX < brickX; iX++)
     {
         for (int iY = 0; iY < brickY; iY++)
         {
-            bricks.emplace_back( (iX + 1) * (brickWidth + 3) + 22, (iY + 2) * (brickHeight + 3));
+            bricks.emplace_back((iX + 1) * (brickWidth + 3) + 22, (iY + 2) * (brickHeight + 3));
         }
     }
 
-    while (window.isOpen())
+    sf::Text text;
+    sf::Font font;
+    font.loadFromFile("arial.ttf");
+    text.setFont(font);
+    text.setString("Press Space to Start!");
+    sf::FloatRect textRect = text.getLocalBounds();
+    text.setFillColor(sf::Color::Yellow);
+    text.setOrigin(textRect.left + textRect.width / 2.0f,
+        textRect.top + textRect.height / 2.0f);
+    text.setPosition(window.getView().getCenter());
+
+    bool gameStarted = 0;
+    while (window.isOpen()) {
+        while (window.pollEvent(event))
+        {
+            window.clear();
+            window.draw(text);
+            window.display();
+            switch (event.type)
+            {
+            case sf::Event::Closed:
+                window.close();
+                break;
+            case sf::Event::KeyPressed:
+                if (event.key.code == sf::Keyboard::Q)
+                {
+                    window.close();
+                }
+                if (event.key.code == sf::Keyboard::Space)
+                {
+                    gameStarted = 1;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        if (gameStarted)
+            break;
+    }
+
+    while (gameStarted == true)
     {
+
         window.clear(sf::Color::Black);
         ball.update();
         bouncer.update();
@@ -170,30 +210,57 @@ int main()
                 return mBrick.doesNotExist;
             }),
             end(bricks));
+        if (bricks.empty())
+        {
+            text.setString("You win!");
+            textRect = text.getLocalBounds();
+            text.setOrigin(textRect.left + textRect.width / 2.0f,
+                textRect.top + textRect.height / 2.0f);
+            text.setPosition(window.getView().getCenter());
+            window.clear();
+            window.draw(text);
+            window.display();
+            sf::sleep(sf::seconds(3));
+            break;
+        }
         window.draw(ball.shape);
         window.draw(bouncer.shape);
         for (auto& brick : bricks) window.draw(brick.shape);
         window.display();
 
+        if (ball.gameOver)
+        {
+
+            text.setString("You lose!");
+            textRect = text.getLocalBounds();
+            text.setOrigin(textRect.left + textRect.width / 2.0f,
+                textRect.top + textRect.height / 2.0f);
+            text.setPosition(window.getView().getCenter());
+            window.clear();
+            window.draw(text);
+            window.display();
+            sf::sleep(sf::seconds(3));
+            break;
+        }
 
         while (window.pollEvent(event))
         {
             switch (event.type)
             {
-                case sf::Event::Closed:
-                     window.close();
-                     break;
-                case sf::Event::KeyPressed:
-                    if (event.key.code == sf::Keyboard::Q)
-                    {
-                        window.close();
-                    }
-                    break;
-                default:
-                    break;
+            case sf::Event::Closed:
+                window.close();
+                break;
+            case sf::Event::KeyPressed:
+                if (event.key.code == sf::Keyboard::Q)
+                {
+                    window.close();
+                }
+                break;
+            default:
+                break;
             }
         }
     }
-
+    
     return 0;
 }
